@@ -1,45 +1,55 @@
-import { NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const prisma = new PrismaClient();
 
-// Secret key (in real projects put this in .env file)
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
-
 export async function POST(req) {
   try {
+    // 1. Parse the incoming request body (email + password)
     const body = await req.json();
     const { email, password } = body;
 
-    // 1️⃣ Check if user exists
+    // 2. Check if user exists in DB
     const user = await prisma.user.findUnique({
       where: { email },
     });
 
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+      return new Response(JSON.stringify({ error: "User not found" }), {
+        status: 404,
+      });
     }
 
-    // 2️⃣ Compare password
+    // 3. Compare entered password with hashed password in DB
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
-      return NextResponse.json({ error: "Invalid password" }, { status: 401 });
+      return new Response(JSON.stringify({ error: "Invalid credentials" }), {
+        status: 401,
+      });
     }
 
-    // 3️⃣ Generate JWT
+    // 4. Generate JWT token
     const token = jwt.sign(
-      { id: user.id, email: user.email }, // payload
-      JWT_SECRET, // secret
-      { expiresIn: "1h" } // validity
+      { userId: user.id, email: user.email }, // payload
+      process.env.JWT_SECRET,                 // secret key
+      { expiresIn: "7d" }                     // token expiry
     );
 
-    // 4️⃣ Return token to frontend
-    return NextResponse.json({ message: "Login successful", token });
+    // 5. Return token + user info
+    return new Response(
+      JSON.stringify({
+        message: "Login successful",
+        token,
+        user: { id: user.id, email: user.email },
+      }),
+      { status: 200 }
+    );
   } catch (error) {
     console.error("Login error:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+    return new Response(JSON.stringify({ error: "Login failed" }), {
+      status: 500,
+    });
   }
 }
