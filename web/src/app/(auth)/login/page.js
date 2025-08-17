@@ -20,11 +20,10 @@ export default function LoginPage() {
       const data = await res.json();
 
       if (res.ok) {
+        localStorage.setItem("token", data.token); // 🔑 store token
         setMessage("✅ Login successful!");
-        setEmail("");
-        setPassword("");
 
-        // 👉 later we’ll redirect user to dashboard here
+        // 👉 later we’ll redirect to dashboard
       } else {
         setMessage(`❌ ${data.error}`);
       }
@@ -67,9 +66,7 @@ export default function LoginPage() {
           Login
         </button>
 
-        {message && (
-          <p className="mt-3 text-center text-sm">{message}</p>
-        )}
+        {message && <p className="mt-3 text-center text-sm">{message}</p>}
       </form>
     </div>
   );
